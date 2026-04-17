@@ -4,7 +4,7 @@ import {
   MessageSquare, X, Send, Bot, User, ExternalLink,
   Minimize2, Shield, Zap,
 } from 'lucide-react'
-import { chatWithContext } from '../services/perplexity'
+import { chatWithContext } from '../services/api'
 
 const QUICK_QUESTIONS = [
   'Why is this article misleading?',

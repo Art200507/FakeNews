@@ -9,7 +9,7 @@ import LoadingAnimation from './components/LoadingAnimation'
 import AnalysisResult from './components/AnalysisResult'
 import ChatBot from './components/ChatBot'
 import HistoryPanel from './components/HistoryPanel'
-import { analyzeArticle } from './services/perplexity'
+import { analyzeArticle } from './services/api'
 
 export default function App() {
   const [article, setArticle] = useState('')
