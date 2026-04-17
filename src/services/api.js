@@ -1,8 +1,9 @@
-// All API calls go through our backend (API key is safe server-side)
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+// Relative URLs — works everywhere:
+// • Local dev  → Vite proxies /api/* to Express on :5000
+// • Production → Vercel serves /api/* as serverless functions (same domain, no CORS)
 
 const post = async (path, body) => {
-  const res = await fetch(`${BASE}${path}`, {
+  const res  = await fetch(path, {
     method : 'POST',
     headers: { 'Content-Type': 'application/json' },
     body   : JSON.stringify(body),
@@ -13,14 +14,12 @@ const post = async (path, body) => {
 }
 
 const get = async (path) => {
-  const res  = await fetch(`${BASE}${path}`)
+  const res  = await fetch(path)
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
   return data
 }
 
-export const analyzeArticle    = (articleText)                          => post('/api/analyze', { article: articleText })
-export const chatWithContext   = (messages, articleText, analysisResult) => post('/api/chat',    { messages, articleText, analysisResult })
-export const getHistory        = (limit = 20, offset = 0)               => get(`/api/history?limit=${limit}&offset=${offset}`)
-export const getStats          = ()                                      => get('/api/stats')
-export const checkHealth       = ()                                      => get('/api/health')
+export const analyzeArticle  = (articleText)                           => post('/api/analyze', { article: articleText })
+export const chatWithContext  = (messages, articleText, analysisResult) => post('/api/chat',   { messages, articleText, analysisResult })
+export const checkHealth      = ()                                      => get('/api/health')
