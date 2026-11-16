@@ -41,11 +41,14 @@ const parseJSON = (text) => {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-  if (req.method === 'OPTIONS') return res.status(200).end()
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  res.setHeader('Cache-Control', 'no-store')
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST')
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return res.status(400).json({ error: 'Expected a JSON object' })
+  }
 
   const { article } = req.body ?? {}
 
@@ -59,9 +62,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Article too long — maximum 20,000 characters' })
   }
 
+  if (!process.env.PERPLEXITY_API_KEY) {
+    return res.status(503).json({ error: 'AI analysis is not configured yet. Please try again later.' })
+  }
   try {
     const response = await fetch(PERPLEXITY_URL, {
       method: 'POST',
+      signal: AbortSignal.timeout(25000),
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
@@ -79,19 +86,19 @@ export default async function handler(req, res) {
     })
 
     if (!response.ok) {
-      const err = await response.text()
       return res.status(502).json({ error: `AI service error (${response.status})` })
     }
 
     const data = await response.json()
-    const content = data.choices[0].message.content
+    const content = data.choices?.[0]?.message?.content
+    if (typeof content !== 'string') return res.status(502).json({ error: 'Empty AI response' })
     const parsed = parseJSON(content)
 
-    if (!parsed) return res.status(502).json({ error: 'Failed to parse AI response — please try again' })
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !['REAL','FAKE','MISLEADING','UNVERIFIABLE'].includes(parsed.verdict) || typeof parsed.summary !== 'string') return res.status(502).json({ error: 'Failed to parse AI response — please try again' })
 
     return res.status(200).json({ ...parsed, citations: data.citations || [], cached: false })
   } catch (err) {
-    console.error('[analyze]', err.message)
-    return res.status(500).json({ error: 'Internal server error' })
+
+    return res.status(err.name === 'TimeoutError' ? 504 : 502).json({ error: 'AI service unavailable. Please try again.' })
   }
 }
